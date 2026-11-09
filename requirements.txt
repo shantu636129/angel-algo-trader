@@ -1,0 +1,11 @@
+smartapi-python
+pyotp
+logzero
+pandas
+
+requests
+websocket-client
+yfinance
+crewai
+crewai-tools
+python-dotenv

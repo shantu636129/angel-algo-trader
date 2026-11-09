@@ -1,0 +1,14 @@
+.env
+venv/
+node_modules/
+__pycache__/
+*.log
+*.csv
+*.pkl
+config/settings.py
+data/*
+!data/.gitkeep
+logs/
+paper_trading/*.json
+paper_trading/logs/
+.entered_date

@@ -1,0 +1,328 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>News Momentum – Auto Paper Monitor</title>
+<style>
+  :root {
+    --bg: #0f1419; --card: #1a2332; --green: #00c853; --red: #ff5252;
+    --blue: #2979ff; --text: #e8eaed; --muted: #9aa0a6; --border: #2d3748;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: 'Segoe UI', system-ui, sans-serif;
+    background: var(--bg); color: var(--text);
+    min-height: 100vh; padding: 16px;
+  }
+  h1 { font-size: 1.25rem; margin-bottom: 4px; }
+  .subtitle { color: var(--muted); font-size: 0.85rem; margin-bottom: 14px; }
+  .live-bar {
+    display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+    background: var(--card); border: 1px solid var(--border); border-radius: 12px;
+    padding: 12px 14px; margin-bottom: 16px; font-size: 0.85rem;
+  }
+  .hb {
+    width: 12px; height: 12px; border-radius: 50%; background: #555; flex-shrink: 0;
+  }
+  .hb.live {
+    background: var(--green);
+    animation: pulse 1.2s ease-in-out infinite;
+  }
+  .hb.dead { background: var(--red); }
+  @keyframes pulse {
+    0% { box-shadow: 0 0 0 0 rgba(0,200,83,0.55); }
+    70% { box-shadow: 0 0 0 10px rgba(0,200,83,0); }
+    100% { box-shadow: 0 0 0 0 rgba(0,200,83,0); }
+  }
+  .flow {
+    background: var(--card); border: 1px solid var(--border); border-radius: 12px;
+    padding: 14px; margin-bottom: 16px; font-size: 0.85rem; color: var(--muted);
+  }
+  .flow strong { color: var(--text); }
+  .grid {
+    display: grid; grid-template-columns: 1fr; gap: 14px; margin-bottom: 16px;
+  }
+  @media (min-width: 700px) {
+    .grid { grid-template-columns: 1fr 1fr; }
+  }
+  .card {
+    background: var(--card); border: 1px solid var(--border); border-radius: 12px;
+    padding: 16px;
+  }
+  .card h2 { font-size: 1rem; margin-bottom: 12px; color: var(--blue); }
+  .sym {
+    font-size: 1.4rem; font-weight: 700; margin-bottom: 12px;
+  }
+  .row {
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 8px 0; border-bottom: 1px solid var(--border); font-size: 0.95rem;
+  }
+  .row:last-child { border-bottom: none; }
+  .label { color: var(--muted); }
+  .value { font-weight: 600; font-variant-numeric: tabular-nums; }
+  .profit { color: var(--green); }
+  .loss { color: var(--red); }
+  .status {
+    display: inline-block; padding: 4px 10px; border-radius: 20px;
+    font-size: 0.8rem; font-weight: 600;
+  }
+  .status.open { background: #1a3a5c; color: #64b5f6; }
+  .status.hit { background: #1b3a1b; color: var(--green); }
+  .status.wait { background: #3a2a1a; color: #ffb74d; }
+  .status.none { background: #2a2a2a; color: var(--muted); }
+  .summary {
+    background: var(--card); border: 1px solid var(--border); border-radius: 12px;
+    padding: 16px;
+  }
+  .summary h2 { font-size: 1rem; margin-bottom: 12px; }
+  .stats { display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 14px; }
+  .stat-box {
+    background: #0d1117; border: 1px solid var(--border); border-radius: 8px;
+    padding: 10px 12px; min-width: 80px;
+  }
+  .stat-box .num { font-size: 1.2rem; font-weight: 700; }
+  .stat-box .lbl { font-size: 0.7rem; color: var(--muted); }
+  table { width: 100%; border-collapse: collapse; font-size: 0.8rem; }
+  th, td { text-align: left; padding: 8px 6px; border-bottom: 1px solid var(--border); }
+  th { color: var(--muted); font-weight: 500; }
+  .empty { color: var(--muted); text-align: center; padding: 24px 8px; font-size: 0.9rem; }
+  .flash-up { color: var(--green) !important; }
+  .flash-down { color: var(--red) !important; }
+</style>
+</head>
+<body>
+  <h1>Auto Paper Monitor</h1>
+  <p class="subtitle">Fully automatic · No manual entry · 9:15 open · +2% target</p>
+
+  <div class="live-bar">
+    <div class="hb" id="hb"></div>
+    <span id="streamStatus">Connecting…</span>
+    <span style="color:var(--muted)">·</span>
+    <span>Beat <strong id="beatNum">0</strong></span>
+    <span style="color:var(--muted)">·</span>
+    <span id="serverTime">—</span>
+  </div>
+
+  <div class="flow">
+    <strong>Auto flow:</strong> 8:15 news Top 2 → <strong>9:15 entry at open</strong> → live track to +2% · No SL · Paper only
+  </div>
+
+  <div class="grid">
+    <div class="card" id="card1">
+      <h2>Stock #1</h2>
+      <div class="sym" id="sym1">—</div>
+      <div class="row"><span class="label">Entry (Open 9:15)</span><span class="value" id="entry1">—</span></div>
+      <div class="row"><span class="label">Target (+2%)</span><span class="value" id="tgt1">—</span></div>
+      <div class="row"><span class="label">Live LTP</span><span class="value" id="ltp1">—</span></div>
+      <div class="row"><span class="label">P&L %</span><span class="value" id="pnl1">—</span></div>
+      <div class="row"><span class="label">Status</span><span id="st1" class="status wait">Waiting</span></div>
+    </div>
+    <div class="card" id="card2">
+      <h2>Stock #2</h2>
+      <div class="sym" id="sym2">—</div>
+      <div class="row"><span class="label">Entry (Open 9:15)</span><span class="value" id="entry2">—</span></div>
+      <div class="row"><span class="label">Target (+2%)</span><span class="value" id="tgt2">—</span></div>
+      <div class="row"><span class="label">Live LTP</span><span class="value" id="ltp2">—</span></div>
+      <div class="row"><span class="label">P&L %</span><span class="value" id="pnl2">—</span></div>
+      <div class="row"><span class="label">Status</span><span id="st2" class="status wait">Waiting</span></div>
+    </div>
+  </div>
+
+  <div class="summary">
+    <h2>History</h2>
+    <div class="stats" id="stats"></div>
+    <div style="overflow-x:auto">
+      <table>
+        <thead>
+          <tr>
+            <th>ID</th><th>Date</th><th>#</th><th>Symbol</th>
+            <th>Entry</th><th>Target</th><th>LTP</th><th>P&L</th><th>Status</th>
+          </tr>
+        </thead>
+        <tbody id="historyTable">
+          <tr><td colspan="9" class="empty">Waiting for auto trades…</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+<script>
+  let lastPrices = {};
+  let fullHistory = [];
+
+  function setCard(n, trade, liveLtp) {
+    const symEl = document.getElementById('sym' + n);
+    const entryEl = document.getElementById('entry' + n);
+    const tgtEl = document.getElementById('tgt' + n);
+    const ltpEl = document.getElementById('ltp' + n);
+    const pnlEl = document.getElementById('pnl' + n);
+    const stEl = document.getElementById('st' + n);
+
+    if (!trade) {
+      symEl.textContent = '—';
+      entryEl.textContent = '—';
+      tgtEl.textContent = '—';
+      ltpEl.textContent = '—';
+      pnlEl.textContent = '—';
+      stEl.textContent = 'Waiting';
+      stEl.className = 'status wait';
+      return;
+    }
+
+    symEl.textContent = trade.symbol;
+    entryEl.textContent = '₹' + Number(trade.entry).toFixed(2);
+    tgtEl.textContent = '₹' + Number(trade.target).toFixed(2);
+
+    const ltp = liveLtp != null ? liveLtp : trade.exit_ltp;
+    if (ltp != null) {
+      const px = Number(ltp);
+      const prev = lastPrices[trade.symbol];
+      ltpEl.textContent = '₹' + px.toFixed(2);
+      ltpEl.classList.remove('flash-up', 'flash-down');
+      if (prev != null) {
+        if (px > prev) ltpEl.classList.add('flash-up');
+        if (px < prev) ltpEl.classList.add('flash-down');
+      }
+      lastPrices[trade.symbol] = px;
+      const pnl = +(((px - trade.entry) / trade.entry) * 100).toFixed(2);
+      pnlEl.textContent = (pnl >= 0 ? '+' : '') + pnl + '%';
+      pnlEl.className = 'value ' + (pnl >= 0 ? 'profit' : 'loss');
+    } else {
+      ltpEl.textContent = '—';
+      pnlEl.textContent = trade.pnl_pct != null
+        ? ((trade.pnl_pct >= 0 ? '+' : '') + Number(trade.pnl_pct).toFixed(2) + '%') : '—';
+    }
+
+    if (trade.status === 'HIT') {
+      stEl.textContent = 'HIT +2%';
+      stEl.className = 'status hit';
+    } else if (trade.status === 'OPEN') {
+      stEl.textContent = 'OPEN';
+      stEl.className = 'status open';
+    } else {
+      stEl.textContent = trade.status || 'Waiting';
+      stEl.className = 'status wait';
+    }
+  }
+
+  function renderFromStream(d) {
+    const today = d.history || [];
+    const picks = d.picks || [];
+    const prices = d.prices || {};
+
+    // Rank 1 / 2 from today's auto trades, else show pick symbol only
+    const t1 = today.find(t => t.rank === 1) || today[0];
+    const t2 = today.find(t => t.rank === 2) || today[1];
+
+    if (t1) {
+      setCard(1, t1, prices[t1.symbol]);
+    } else if (picks[0] && picks[0] !== 'NONE') {
+      document.getElementById('sym1').textContent = picks[0];
+      document.getElementById('st1').textContent = 'Queued for 9:15';
+      document.getElementById('st1').className = 'status wait';
+      if (prices[picks[0]] != null) {
+        document.getElementById('ltp1').textContent = '₹' + Number(prices[picks[0]]).toFixed(2);
+      }
+    } else {
+      setCard(1, null);
+    }
+
+    if (t2) {
+      setCard(2, t2, prices[t2.symbol]);
+    } else if (picks[1] && picks[1] !== 'NONE') {
+      document.getElementById('sym2').textContent = picks[1];
+      document.getElementById('st2').textContent = 'Queued for 9:15';
+      document.getElementById('st2').className = 'status wait';
+      if (prices[picks[1]] != null) {
+        document.getElementById('ltp2').textContent = '₹' + Number(prices[picks[1]]).toFixed(2);
+      }
+    } else {
+      setCard(2, null);
+    }
+
+    // history merge
+    if (d.history) {
+      const map = {};
+      fullHistory.forEach(t => { map[t.id] = t; });
+      d.history.forEach(t => { map[t.id] = t; });
+      // keep non-today from fullHistory
+      fullHistory.forEach(t => { if (!map[t.id]) map[t.id] = t; });
+      renderHistory(Object.values(map).sort((a, b) => a.id - b.id));
+    }
+  }
+
+  function renderHistory(data) {
+    fullHistory = data;
+    const tbody = document.getElementById('historyTable');
+    if (!data.length) {
+      tbody.innerHTML = '<tr><td colspan="9" class="empty">No auto trades yet</td></tr>';
+      document.getElementById('stats').innerHTML = '';
+      return;
+    }
+    const hits = data.filter(t => t.status === 'HIT').length;
+    const open = data.filter(t => t.status === 'OPEN').length;
+    const withPnl = data.filter(t => t.pnl_pct != null);
+    const avg = withPnl.length ? withPnl.reduce((s, t) => s + t.pnl_pct, 0) / withPnl.length : 0;
+
+    document.getElementById('stats').innerHTML = `
+      <div class="stat-box"><div class="num">${data.length}</div><div class="lbl">Total</div></div>
+      <div class="stat-box"><div class="num profit">${hits}</div><div class="lbl">HIT</div></div>
+      <div class="stat-box"><div class="num">${open}</div><div class="lbl">OPEN</div></div>
+      <div class="stat-box"><div class="num ${avg>=0?'profit':'loss'}">${avg.toFixed(2)}%</div><div class="lbl">Avg</div></div>
+    `;
+
+    tbody.innerHTML = data.slice().reverse().map(t => `
+      <tr>
+        <td>${t.id}</td>
+        <td>${t.date}</td>
+        <td>${t.rank || '-'}</td>
+        <td><strong>${t.symbol}</strong></td>
+        <td>₹${Number(t.entry).toFixed(2)}</td>
+        <td>₹${Number(t.target).toFixed(2)}</td>
+        <td>${t.exit_ltp != null ? '₹' + Number(t.exit_ltp).toFixed(2) : '—'}</td>
+        <td class="${(t.pnl_pct||0)>=0?'profit':'loss'}">${t.pnl_pct!=null?((t.pnl_pct>=0?'+':'')+Number(t.pnl_pct).toFixed(2)+'%'):'—'}</td>
+        <td>${t.status}</td>
+      </tr>
+    `).join('');
+  }
+
+  async function loadHistory() {
+    try {
+      const res = await fetch('/api/history');
+      renderHistory(await res.json());
+    } catch (e) {}
+  }
+
+  function startStream() {
+    const es = new EventSource('/api/stream');
+    const hb = document.getElementById('hb');
+    const st = document.getElementById('streamStatus');
+    es.onopen = () => {
+      hb.className = 'hb live';
+      st.textContent = 'Live';
+      st.style.color = 'var(--green)';
+    };
+    es.onerror = () => {
+      hb.className = 'hb dead';
+      st.textContent = 'Reconnecting…';
+      st.style.color = 'var(--red)';
+    };
+    es.onmessage = (ev) => {
+      try {
+        const d = JSON.parse(ev.data);
+        hb.className = 'hb live';
+        st.textContent = 'Live';
+        st.style.color = 'var(--green)';
+        document.getElementById('beatNum').textContent = d.beat;
+        document.getElementById('serverTime').textContent = d.time;
+        renderFromStream(d);
+      } catch (e) {}
+    };
+  }
+
+  loadHistory();
+  startStream();
+</script>
+</body>
+</html>
